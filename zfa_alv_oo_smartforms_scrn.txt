@@ -1,0 +1,14 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZFA_ALV_OO_SMARTFORMS_SCRN
+*&---------------------------------------------------------------------*
+
+
+SELECTION-SCREEN BEGIN OF BLOCK b1 WITH FRAME TITLE text-001.
+SELECT-OPTIONS : s_bukrs FOR lfb1-bukrs NO-EXTENSION NO INTERVALS.
+
+SELECT-OPTIONS : s_lifnr FOR lfa1-lifnr   MODIF ID uc1,   "dynamic
+                 s_kunnr FOR kna1-kunnr   MODIF ID uc2.
+
+PARAMETERS : r_satici RADIOBUTTON GROUP rb1 DEFAULT 'X' USER-COMMAND uc1,
+             r_msteri RADIOBUTTON GROUP rb1.
+SELECTION-SCREEN END OF BLOCK b1.

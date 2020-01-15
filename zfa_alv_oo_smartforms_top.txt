@@ -1,0 +1,76 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZFA_ALV_OO_SMARTFORMS_TOP
+*&---------------------------------------------------------------------*
+
+CLASS : lcl_event_handler DEFINITION DEFERRED.  "TANIMLANMA TANIMLANMIŞ
+
+DATA: lv_fmname TYPE rs38l_fnam,
+      lv_fname TYPE tdsfname.
+lv_fname = 'ZFA_ALV_OO_SMARTFORMS'.
+
+DATA : ok_code           TYPE sy-ucomm.
+DATA : go_container      TYPE REF TO cl_gui_custom_container,
+       go_alv            TYPE REF TO cl_gui_alv_grid, "1.alv için
+       go_event_handler  TYPE REF TO lcl_event_handler,
+       go_dialogbox_cont TYPE REF TO cl_gui_dialogbox_container, "çif tıklanınca açılan 2.alv için
+       go_alv2           TYPE REF TO cl_gui_alv_grid, "2.alv için
+       answer(1) TYPE c.
+
+TABLES : lfa1,
+         kna1,
+         lfb1.
+
+DATA: gt_outtab TYPE TABLE OF zfa_s_satici_musteri.    "ZFA_S_SATICI_MUSTERI stracture tablo oncede gerkli alnları ekledik
+
+TYPES : BEGIN OF gty_list,                             "sel kullanacaksak bunu kullanmak zorundayız
+          sel TYPE xfeld.
+        INCLUDE TYPE zfa_s_satici_musteri.
+TYPES : END OF gty_list.
+
+DATA : gt_list  TYPE TABLE OF gty_list,
+       gs_list TYPE gty_list, " sel olmasa gt_list  TYPE TABLE OF zfa_s_satici_musteri. olarka kullanırdık
+       gt_list2 TYPE TABLE OF zfa_s_satici_musteri_alv2."sel'le gerek yok direk böylede yazabiliriz
+
+DATA : gs_layo            TYPE   lvc_s_layo,     " 1. ve 2. alv için ayn
+       gt_fcat            TYPE   lvc_t_fcat,"slis_t_fieldcat_alv, " birinci alv için
+       gt_fcat_alv2       TYPE   lvc_t_fcat, " ikinci alv için
+       gt_filter          TYPE   lvc_t_filt,
+       gs_filter          TYPE   lvc_s_filt,
+       gt_sort            TYPE   lvc_t_sort,
+       gs_sort            TYPE   lvc_s_sort,
+       gt_toolbar_ex      TYPE   ui_functions,
+       gv_answer(1)       TYPE   c.
+
+TYPES: BEGIN OF gty_adrc,    "structure table
+        adrnr     TYPE adrc-addrnumber,
+        country   TYPE adrc-country,
+        city1     TYPE adrc-city1,
+        street    TYPE adrc-street,
+       END OF gty_adrc.
+
+DATA : gt_adrc TYPE TABLE OF gty_adrc,                " 1.alvde görünen 2. kısım ülke vb.. key alnları bağlantılı
+       gt_rate TYPE TABLE OF zfa_t_stici_mstr.        " rating alanına veri eklemek ve çekip göstermek için
+
+DATA :  gv_index TYPE sy-tabix.       " global index module read table icin
+
+TYPES : BEGIN OF gty_bseg,   "structure table
+    bukrs TYPE  bseg-bukrs,
+    belnr TYPE  bseg-belnr,
+    gjahr TYPE  bseg-gjahr,
+    buzei TYPE  bseg-buzei,
+    hkont TYPE  bseg-hkont,
+    lifnr TYPE  bseg-lifnr,
+    kunnr TYPE  bseg-kunnr,
+    dmbtr TYPE  bseg-dmbtr,
+     END OF gty_bseg.
+
+DATA: gt_bseg TYPE TABLE OF gty_bseg.
+
+TYPES : BEGIN OF gty_bkpf,   "structure table
+    belnr TYPE bkpf-belnr,
+    gjahr TYPE bkpf-gjahr,
+    blart TYPE bkpf-blart,
+    budat TYPE bkpf-budat,
+  END OF gty_bkpf.
+
+DATA: gt_bkpf TYPE TABLE OF gty_bkpf.

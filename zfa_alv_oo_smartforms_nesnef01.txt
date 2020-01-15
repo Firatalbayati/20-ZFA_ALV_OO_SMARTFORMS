@@ -1,0 +1,210 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZFA_ALV_OO_SMARTFORMS_NESNEF01
+*&---------------------------------------------------------------------*
+
+FORM alv_olustur.
+  IF go_container IS INITIAL.
+
+    CREATE OBJECT go_container
+      EXPORTING
+        container_name = 'CONT1'.
+
+    CREATE OBJECT go_alv
+      EXPORTING
+        i_parent = go_container.
+
+    CREATE OBJECT go_event_handler. " çif tıklama için
+    SET HANDLER go_event_handler->handle_double_click
+                       FOR go_alv.
+    SET HANDLER go_event_handler->handle_toolbar
+                       FOR go_alv.
+    SET HANDLER go_event_handler->handle_user_command
+                       FOR go_alv.
+
+    " 1. radio button
+    IF r_satici EQ abap_true.
+
+      SELECT lb~bukrs
+             la~lifnr
+             la~name1
+             la~telfx
+             la~adrnr
+             la~telf1
+             la~stcd1
+             la~stcd2
+           INTO TABLE gt_outtab
+           FROM lfa1 AS la INNER JOIN
+                lfb1 AS lb ON la~lifnr EQ lb~lifnr
+       WHERE lb~bukrs IN s_bukrs
+       AND la~lifnr IN s_lifnr.
+
+      IF gt_outtab IS NOT INITIAL.
+        SELECT addrnumber
+               country
+               city1
+               street
+          FROM adrc INTO TABLE gt_adrc
+          FOR ALL ENTRIES IN gt_outtab
+          WHERE addrnumber EQ gt_outtab-adrnr.
+        SORT gt_adrc BY adrnr.
+
+        SELECT * FROM  zfa_t_stici_mstr INTO TABLE gt_rate
+          FOR ALL ENTRIES IN gt_outtab
+          WHERE partner EQ gt_outtab-number.
+        SORT gt_rate BY partner.
+      ENDIF.
+
+      LOOP AT gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab>).      " gt_list isminde boş alanlar oluşturduk ve içine ..
+        APPEND INITIAL LINE TO gt_list ASSIGNING FIELD-SYMBOL(<fs_list>). " gt_outtab taki alanları doldurduk alv de görünsün diye
+        <fs_list>-bukrs  = <fs_outtab>-bukrs.
+        <fs_list>-number = <fs_outtab>-number.
+        <fs_list>-name1  = <fs_outtab>-name1.
+        <fs_list>-telfx  = <fs_outtab>-telfx.
+        <fs_list>-adrnr  = <fs_outtab>-adrnr.
+        <fs_list>-telf1  = <fs_outtab>-telf1.
+        <fs_list>-stcd1  = <fs_outtab>-stcd1.
+        <fs_list>-stcd2  = <fs_outtab>-stcd2.
+        READ TABLE gt_adrc ASSIGNING FIELD-SYMBOL(<fs_adrc>)
+          WITH KEY adrnr = <fs_list>-adrnr BINARY SEARCH.
+        IF sy-subrc IS INITIAL.
+          <fs_list>-country  = <fs_adrc>-country.
+          <fs_list>-city1    = <fs_adrc>-city1.
+          <fs_list>-street   = <fs_adrc>-street.
+        ENDIF.
+        <fs_list>-value = 'SATICI'.
+        READ TABLE gt_rate ASSIGNING FIELD-SYMBOL(<fs_rate>)
+          WITH KEY partner = <fs_list>-number.
+        IF sy-subrc IS INITIAL.
+          <fs_list>-rating = <fs_rate>-rating.
+        ENDIF.
+      ENDLOOP.
+
+      CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+        EXPORTING
+          i_structure_name       = 'ZFA_S_SATICI_MUSTERI'
+        CHANGING
+          ct_fieldcat            = gt_fcat
+        EXCEPTIONS
+          inconsistent_interface = 1
+          program_error          = 2
+          OTHERS                 = 3.
+
+      LOOP AT gt_fcat ASSIGNING FIELD-SYMBOL(<fs_fieldcat>).  " Colum renklendirme
+        CASE <fs_fieldcat>-fieldname.
+          WHEN 'BUKRS' OR 'NUMBER' OR 'RATING'.
+            <fs_fieldcat>-key = abap_true.
+        ENDCASE.
+      ENDLOOP.
+
+      gs_layo-edit_mode = abap_true.            " alv'de değerleri değiştirebilmek
+      gs_layo-zebra = abap_true.
+      gs_layo-sel_mode = 'A'.
+
+      CALL METHOD go_alv->set_table_for_first_display
+        EXPORTING
+          i_structure_name     = 'ZFA_S_SATICI_MUSTERI'
+          is_layout            = gs_layo
+          it_toolbar_excluding = gt_toolbar_ex
+        CHANGING
+          it_outtab            = gt_list
+          it_filter            = gt_filter
+          it_sort              = gt_sort
+          it_fieldcatalog      = gt_fcat.
+    ENDIF.
+
+
+    "   2. radio button
+    IF r_msteri EQ abap_true .
+
+      SELECT lb~bukrs
+             ka~kunnr
+             ka~name1
+             ka~telfx
+             ka~adrnr
+             ka~telf1
+             ka~stcd1
+             ka~stcd2
+           INTO TABLE gt_outtab
+           FROM kna1 AS ka INNER JOIN
+                lfb1 AS lb ON ka~lifnr EQ lb~lifnr
+       WHERE lb~bukrs IN s_bukrs
+       AND ka~kunnr IN s_kunnr.
+
+      IF gt_outtab IS NOT INITIAL.
+        SELECT addrnumber
+               country
+               city1
+               street
+          FROM adrc INTO TABLE gt_adrc
+          FOR ALL ENTRIES IN gt_outtab
+          WHERE addrnumber EQ gt_outtab-adrnr.
+        SORT gt_adrc BY adrnr.
+
+        SELECT * FROM  zfa_t_stici_mstr INTO TABLE gt_rate
+          FOR ALL ENTRIES IN gt_outtab
+          WHERE partner EQ gt_outtab-number.
+        SORT gt_rate BY partner.
+      ENDIF.
+
+      LOOP AT gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab2>).      " gt_list isminde boş alanlar oluşturduk ve içine ..
+        APPEND INITIAL LINE TO gt_list ASSIGNING FIELD-SYMBOL(<fs_list2>). " gt_outtab taki alanları doldurduk alv de görünsün diye
+        <fs_list2>-bukrs  = <fs_outtab2>-bukrs.
+        <fs_list2>-number = <fs_outtab2>-number.
+        <fs_list2>-name1  = <fs_outtab2>-name1.
+        <fs_list2>-telfx  = <fs_outtab2>-telfx.
+        <fs_list2>-adrnr  = <fs_outtab2>-adrnr.
+        <fs_list2>-telf1  = <fs_outtab2>-telf1.
+        <fs_list2>-stcd1  = <fs_outtab2>-stcd1.
+        <fs_list2>-stcd2  = <fs_outtab2>-stcd2.
+        READ TABLE gt_adrc ASSIGNING FIELD-SYMBOL(<fs_adrc2>)
+          WITH KEY adrnr = <fs_list2>-adrnr BINARY SEARCH.
+        IF sy-subrc IS INITIAL.
+          <fs_list2>-country  = <fs_adrc2>-country.
+          <fs_list2>-city1    = <fs_adrc2>-city1.
+          <fs_list2>-street   = <fs_adrc2>-street.
+        ENDIF.
+        <fs_list2>-value = 'MÜŞTERI'.
+        READ TABLE gt_rate ASSIGNING FIELD-SYMBOL(<fs_rate2>)
+          WITH KEY partner = <fs_list2>-number.
+        IF sy-subrc IS INITIAL.
+          <fs_list2>-rating = <fs_rate2>-rating.
+        ENDIF.
+      ENDLOOP.
+
+      CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
+        EXPORTING
+          i_structure_name       = 'ZFA_S_SATICI_MUSTERI'
+        CHANGING
+          ct_fieldcat            = gt_fcat
+        EXCEPTIONS
+          inconsistent_interface = 1
+          program_error          = 2
+          OTHERS                 = 3.
+
+      LOOP AT gt_fcat ASSIGNING FIELD-SYMBOL(<fs_fieldcat5>).  " Colum renklendirme
+        CASE <fs_fieldcat5>-fieldname.
+          WHEN 'BUKRS' OR 'NUMBER' OR 'RATING'.
+            <fs_fieldcat5>-key = abap_true.
+        ENDCASE.
+      ENDLOOP.
+
+      gs_layo-edit_mode = abap_true.            " alv'de değerleri değiştirebilmek
+      gs_layo-zebra = abap_true.
+      gs_layo-sel_mode = 'A'.
+      gs_layo-grid_title = ' FIRAT ALBAYATI '.
+
+      CALL METHOD go_alv->set_table_for_first_display
+        EXPORTING
+          i_save               = 'A'
+*         i_structure_name     = 'ZFA_S_SATICI_MUSTERI'
+          is_layout            = gs_layo
+          it_toolbar_excluding = gt_toolbar_ex
+        CHANGING
+          it_outtab            = gt_list
+          it_filter            = gt_filter
+          it_sort              = gt_sort
+          it_fieldcatalog      = gt_fcat.
+
+    ENDIF.
+  ENDIF.
+ENDFORM.

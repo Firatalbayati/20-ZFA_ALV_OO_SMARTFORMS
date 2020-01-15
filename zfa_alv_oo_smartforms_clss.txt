@@ -1,0 +1,218 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZFA_ALV_OO_SMARTFORMS_CLSS
+*&---------------------------------------------------------------------*
+
+    CLASS lcl_event_handler DEFINITION ."FINAL. "TANIM FİNALİ
+
+      PUBLIC SECTION.
+        " gui_alv_grid icin double click eventini atadik
+        METHODS: handle_double_click
+                  FOR EVENT double_click OF cl_gui_alv_grid
+                  IMPORTING e_row.
+
+        METHODS: handle_toolbar
+                  FOR EVENT toolbar OF cl_gui_alv_grid
+                  IMPORTING e_object.
+
+        METHODS: handle_user_command
+                  FOR EVENT user_command OF cl_gui_alv_grid
+                  IMPORTING e_ucomm.
+
+    ENDCLASS.
+
+
+    CLASS lcl_event_handler IMPLEMENTATION.
+
+      METHOD handle_double_click.   "satıra çift tıklandığında
+
+        READ TABLE gt_list ASSIGNING FIELD-SYMBOL(<fs_index>) INDEX e_row."index lifnr-kunnr degerini okur
+
+        PERFORM get_data_for_popup_alv USING <fs_index>. " PERFORM <fs_index> ile gönderız veya alırız
+        CHECK gt_bkpf IS NOT INITIAL. " gt_bkpf tablosu boş değilse derlemeye devam et , boş ise burada derlemeyi bittir
+
+        CALL FUNCTION 'POPUP_TO_CONFIRM'
+          EXPORTING
+            titlebar              = 'Yazdırma İşlemleri'
+            text_question         = 'Yazdırmak istiyor musunuz?'
+            text_button_1         = 'OK'
+            icon_button_1         = 'ICON_CHECKED'
+            text_button_2         = 'CANCEL'
+            icon_button_2         = 'ICON_CANCEL'
+            display_cancel_button = 'X'
+          IMPORTING
+            answer                = answer.
+
+        IF answer = '1'.
+
+
+          DATA(ls_satici_musteri) = VALUE zfa_s_satici_musteri_alv2( ). "bir defa yazılan alanlar için bunu yazarız ,önemli.
+          DATA(ls_satici_musteri_info) = gt_list2[ 1 ].
+          ls_satici_musteri = CORRESPONDING #( ls_satici_musteri_info ).
+
+          CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+            EXPORTING
+              formname           = lv_fname
+            IMPORTING
+              fm_name            = lv_fmname
+            EXCEPTIONS
+              no_form            = 1
+              no_function_module = 2
+              OTHERS             = 3.
+
+          CALL FUNCTION lv_fmname  " '/1BCDWB/SF0...... bu fonksiyonu her zaman çağramk zorundayiz ,kopyalamak olmaz
+            EXPORTING
+              gs_satici_musteri = ls_satici_musteri
+            TABLES
+              gt_list2          = gt_list2.
+
+
+          CLEAR gt_list2. " Temizlemesek smartformda her tıkladımızda önceki verileride getirir.
+          CLEAR gt_bkpf. " bunu yazmasak bazı alanlardan damp alırız
+
+        ENDIF.
+      ENDMETHOD.
+
+
+      METHOD handle_toolbar. "toolbara button eklemek için
+        DATA: ls_button TYPE stb_button.
+        ls_button-butn_type = 3.
+        APPEND ls_button TO e_object->mt_toolbar. "olması gerke
+        CLEAR ls_button.
+
+        ls_button-function = 'Kaydet'.
+        ls_button-quickinfo = 'Kaydet'.
+        ls_button-butn_type = 0.
+        ls_button-text = 'Kaydet'.
+        APPEND ls_button TO e_object->mt_toolbar. "olması gerke
+      ENDMETHOD.
+
+
+      METHOD handle_user_command.
+
+        DATA: lv_satir TYPE i.
+
+        CASE e_ucomm.
+          WHEN 'Kaydet'.
+
+            CALL METHOD go_alv->get_current_cell
+              IMPORTING
+                e_row = lv_satir.
+
+            READ TABLE gt_list ASSIGNING FIELD-SYMBOL(<fs_index>) INDEX lv_satir.
+
+            PERFORM save_btn USING <fs_index>.
+
+            CALL METHOD go_alv->refresh_table_display( ). "alv refresh
+
+        ENDCASE.
+      ENDMETHOD.
+    ENDCLASS.
+
+
+    FORM get_data_for_popup_alv USING ps_index TYPE gty_list." LIKE LINE OF gt_list .
+
+      SELECT bukrs
+             belnr
+             gjahr
+             buzei
+             hkont
+             lifnr
+             kunnr
+             dmbtr
+        FROM bseg INTO TABLE gt_bseg
+        WHERE ( lifnr EQ ps_index-number )  "lifnr seçilen number indexsine = ise
+         OR   ( kunnr EQ ps_index-number ). " veya  kunnr seçilen number indexsine = is
+
+      IF sy-subrc IS INITIAL. " gt_bseg is not INITIAL. For All Entries kullanımında dikkat edilmesi gereken nokta ise
+        " eğer anahtar tablonuz(gt_bseg) boş ise tüm kayıtlar okunur. Bu nedenle For All Entries yazmadan önce mutlaka
+        " anahtar tablonun boş olup olmadığını kontrol etmemiz gerekir.
+
+        SELECT  belnr
+                gjahr
+                blart
+                budat
+             FROM bkpf INTO TABLE gt_bkpf
+             FOR ALL ENTRIES IN gt_bseg
+             WHERE bukrs EQ gt_bseg-bukrs
+             AND   belnr EQ gt_bseg-belnr
+             AND   gjahr EQ gt_bseg-gjahr.
+      ENDIF.
+
+      IF gt_bkpf IS NOT INITIAL.
+
+        LOOP AT gt_bseg ASSIGNING FIELD-SYMBOL(<fs_bseg>).                     " döndür gt_bseg tahsis alnan sembolu (<fs_bseg>)
+          APPEND INITIAL LINE TO gt_list2 ASSIGNING FIELD-SYMBOL(<fs_listtt>). " boş satırı gt_list2 ye ekle tahsis alnan sembolu (<fs_listtt>)
+          READ TABLE gt_bkpf ASSIGNING FIELD-SYMBOL(<fs_bkpf>)
+            WITH KEY belnr = <fs_bseg>-belnr
+                     gjahr = <fs_bseg>-gjahr.
+          <fs_listtt>-bukrs = <fs_bseg>-bukrs.
+          <fs_listtt>-belnr = <fs_bseg>-belnr.
+          <fs_listtt>-gjahr = <fs_bseg>-gjahr.
+          <fs_listtt>-buzei = <fs_bseg>-buzei.
+          <fs_listtt>-blart = <fs_bkpf>-blart.
+          <fs_listtt>-budat = <fs_bkpf>-budat.
+          <fs_listtt>-hkont = <fs_bseg>-hkont.
+          <fs_listtt>-number = <fs_bseg>-lifnr.
+          <fs_listtt>-number = <fs_bseg>-kunnr.
+          <fs_listtt>-name1 = ps_index-name1.
+          <fs_listtt>-dmbtr = <fs_bseg>-dmbtr.
+        ENDLOOP.
+
+      ELSEIF gt_bkpf IS INITIAL.   "burada önemli
+
+        MESSAGE i011(zfa_message_class) DISPLAY LIKE 'E'.
+
+      ENDIF.
+    ENDFORM.                    " GET_DATA_FOR_POPUP_ALV
+
+
+
+    "kaydet buttonu için
+    FORM save_btn USING ps_index TYPE gty_list.
+
+      go_alv->get_selected_rows(
+           IMPORTING
+              et_index_rows =  DATA(lt_selected_index_rows)    " Indexes of Selected Rows
+              et_row_no     =  DATA(lt_selected_row_no)    " Numeric IDs of Selected Rows
+          ).
+
+      " Degerlendirme Notu POPUP
+      DATA: gt_rate   TYPE sval OCCURS 0 WITH HEADER LINE,  "bu değişken sayesinde değer gireriz
+            gt_value  TYPE zfa_t_stici_mstr-rating,         "rating alının zfa_t_stici_mstr tablosundan çektik ve gt_value değişkenin içine atık
+            gt_rating TYPE TABLE OF zfa_t_stici_mstr.
+
+      gt_rate-tabname = 'ZFA_T_STICI_MSTR'.
+      gt_rate-fieldname = 'RATING'.
+      gt_rate-fieldtext = text-001.
+      APPEND gt_rate.
+
+      CALL FUNCTION 'POPUP_GET_VALUES'
+        EXPORTING
+          popup_title     = 'Degerlendirme Notu'
+        TABLES
+          fields          = gt_rate
+        EXCEPTIONS
+          error_in_fields = 1
+          OTHERS          = 2.
+
+      IF gt_rate-value NE space.   "  <> eşit değildir
+        IF gt_rate-value LE 100.   "  <= le
+          LOOP AT lt_selected_index_rows INTO DATA(ls_index).
+            READ TABLE  gt_list ASSIGNING FIELD-SYMBOL(<fs_list3>) INDEX ls_index-index .
+            <fs_list3>-rating = gt_rate-value.
+            APPEND INITIAL LINE TO gt_rating ASSIGNING FIELD-SYMBOL(<fs_rating>).
+            <fs_rating>-partner = <fs_list3>-number.
+            <fs_rating>-rating  = gt_rate-value.
+            <fs_rating>-erdat   = sy-datum.
+            <fs_rating>-erzeit  = sy-uzeit.
+            <fs_rating>-ernam   = sy-uname.
+          ENDLOOP.
+
+          MODIFY zfa_t_stici_mstr FROM TABLE gt_rating.
+
+          MESSAGE i010(zfa_message_class) DISPLAY LIKE 'E'.
+        ELSE.
+          MESSAGE i009(zfa_message_class) DISPLAY LIKE 'E'.
+        ENDIF.
+      ENDIF.
+    ENDFORM.

@@ -1,0 +1,15 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZFA_ALV_OO_SMRTFS_ALV_OLUSTR01
+*&---------------------------------------------------------------------*
+
+*&---------------------------------------------------------------------*
+*&      Module  ALV_OLUSTUR_0100  OUTPUT
+*----------------------------------------------------------------------*
+MODULE alv_olustur_0100 OUTPUT.
+  PERFORM alv_olustur.
+ENDMODULE.                 " ALV_OLUSTUR_0100  OUTPUT
+
+MODULE status_0100 OUTPUT.
+  SET PF-STATUS 'ZSTATUS'.
+  SET TITLEBAR 'TITLE_0100'.
+ENDMODULE.                 " STATUS_0100  OUTPUT
